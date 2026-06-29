@@ -1187,6 +1187,8 @@ public class A {
 	
 }
 
+We cannot directly call a constructor from a method in Java. Constructors are only invoked when we create a new object using the new keyword, or when chaining constructors using this() or super()—and those calls must be the first statement inside another constructor. Attempting to call a constructor explicitly from a regular method will result in a compile-time error.
+
 Example:
 ---------
 public class A {
