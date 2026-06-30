@@ -1207,7 +1207,7 @@ public class A {
 Output
 100
 
--> While calling a constructor using this() keyword ensure it is always first statement inside another constructor
+-> While calling a constructor using this() keyword ensure it is always first statement inside another constructor. If we call this() or super() later in the constructor, some code might run before the parent or sibling constructor finishes, leaving the object in an inconsistent state. For example, accessing fields before they’re initialized could cause bugs.
 
 Example:
 ---------
@@ -1223,8 +1223,6 @@ public class A {
 	public static void main(String[] args) {
 	   A a1 = new A();
 	}
-	
-	
 }
 
 Example:
@@ -1240,8 +1238,7 @@ public class A {
 	}
 	public static void main(String[] args) {
 	   A a1 = new A();//Step 1
-	}
-	
+	}	
 	
 }
 
