@@ -82,6 +82,8 @@ d. OneToOne Mapping - One Record in Table A matches with exactly One Record in T
 For Example:
 One Person can have one KYC
 
+The entity in which we are using @OnetoOne annotation, that will become the owning side and other entity will become inverse side. So, we have to decide which entity should have foreign key based on business logic.
+
 ###########################
 Normalization
 ############################
@@ -196,6 +198,53 @@ If we add spring-boot-starter-data-jpa and configure our datasource, Hibernate c
 This behavior is controlled by the property:
 spring.jpa.hibernate.ddl-auto=update
 
+Now, drop both the tables (Employee and Company) from DB.
+Remove below portion of code from Employee.java
+@ManyToOne
+  @JoinColumn(name = "company_id")
+  private Company company;
+
+Add below portion of code to Company.java
+@OneToMany
+@JoinColumn(name = "company_id")
+private List<Employee> employee; -> We cannot represent many with one object's address. We have to store List of objects address.
+Owning side is Employee. Foreign key will be always present in that entity which is Many.
+
+Create new entity, Area.java
+package com.example.hibernate_mapping.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+@Entity
+public class Area {
+    @Id
+    private long id;
+    private String name;
+
+    public void setId(long id){
+        this.id = id;
+    }
+    public void setArea(String name){
+        this.name = name;
+    }
+
+    public long getId(){
+        return this.id;
+    }
+    public String getName(){
+        return this.name;
+    }
+}
+
+Add below lines of code in entity, Employee
+@ManyToOne
+@JoinColumn(name = "area_id")
+private Area area;
+
+Even if we don't create getters and setters explicitly for foreign key columns, JPA can directly read/write those private fields without needing getters/setters using reflection and bytecode enhancement.
+Reflection → lets Hibernate access private fields directly, so we don’t need getters/setters.
+Bytecode enhancement → lets Hibernate add extra behavior (lazy loading, dirty checking, proxies) without us writing extra code.
 
 What is repository layer in spring boot?
 ##############################################
