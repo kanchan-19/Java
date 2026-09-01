@@ -18,7 +18,7 @@ Step 2:  Setup JAVA_HOME(Excluding bin folder) and Java Path (Including bin fold
 	JAVA_HOME=C:\Program Files\Java\jdk-17
 	path=C:\Program Files\Java\jdk-17\bin
 
-Step 4:  Download Maven and unzip the files
+Step 4:  Download Maven (Binary zip archive) and unzip the files. Move this folder to C:\Program Files\
 
 4) Setup MAVEN_HOME(Excluding bin folder) and Maven Path (Including bin folder path)
 
@@ -27,7 +27,14 @@ Step 4:  Download Maven and unzip the files
 	
 5)  Verify Maven setup by using following command in command prompt	
 
-	  $ mvn -version
+	  $ mvn -version or mvn -v -> Along with providing mvn version and its location, it also gives us the JDK version getting used and its path in system.
+
+****
+Every tool we see today, by default comes with maven but we don't use it. We prefer using mvn through cmd prompt.
+Eclipse by default comes with mvn. Open Eclipse -> Right click on Project Explorer -> Go to New -> Other -> Type maven in Wizards. We can see that by deafult, Eclipse comes with Maven Project. But we won't use maven which comes by default within eclipse. We will use Maven tool as an external setup that we did.
+
+We use Maven as it gives us project structure. Select Maven Project -> Next . We can see different project structures in Catalog. To write our Hibernate and Spring boot code, we need a project structure and it will be provided by Maven. For now, we will select internal in Catalog. Select maven-archetype-quickstart. If we are going with J2EE application which means we are doing an enterprise level development
+****
 
 Important Note About Maven:
 
