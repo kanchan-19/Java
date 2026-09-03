@@ -1,6 +1,6 @@
 What is Maven?
 
-- Build Management: Maven handles compiling, testing, packaging, and deploying code. It automates the build process
+- Build Management: Maven handles testing, compiling, packaging, and deploying code. It automates the build process
 - Dependency Management: Maven automatically manages external libraries or dependencies that a project needs
 - Project Structure: Maven enforces a standard directory structure for projects, making it easier for developers to understand how a project is organized, regardless of who wrote the code
 - Repositories: Maven uses repositories
@@ -30,6 +30,7 @@ Step 4:  Download Maven (Binary zip archive) and unzip the files. Move this fold
 	  $ mvn -version or mvn -v -> Along with providing mvn version and its location, it also gives us the JDK version getting used and its path in system.
 
 ****
+
 Every tool we see today, by default comes with maven but we don't use it. We prefer using mvn through cmd prompt.
 Eclipse by default comes with mvn. Open Eclipse -> Right click on Project Explorer -> Go to New -> Other -> Type Maven in Wizards. We can see that by deafult, Eclipse comes with Maven Project. But we won't use maven which comes by default within eclipse. We will use Maven tool as an external setup that we did.
 
@@ -49,6 +50,24 @@ Never download alpha or beta version of any dependency as they are still in deve
 
 iText Core is very poular library for integrating PDF.
 
+The libraries which are getting downloaded in our project by Maven on adding dependency in pom.xml file is getting stored physically in .m2 folder present in path, C:\Users\Admin. This is known as the local repository. There are 2 repositories. One is Maven Central Repository which is present in site, mvnrepository and other is local repository which is present in our system. this means dependencies are downloaded from Central Repository and stored in local repository.
+
+What is build management?
+Suppose we have developd a project. Go to src/main/java and create a package, com.kanchan.entity and create a class, Employee inside it. Now, we want to deploy this project. We will never deploy Java code directly on the server. What goes to server is a jar file. jar stands for Java Archive and that will conisit of only .class files which has byte code.
+
+How to build jar file?
+This is done by Maven. Without Maven, we won't be able to build our application for deployment.
+Right click -> Properties -> open your project folder -> Select the path,
+Right click on your project name -> Properties -> Select the Location in Resources tab -> open that path in File Explorer -> type cmd -> Enter -> our cmd prompt is directly pointing to project. 
+Whatever Java code I have written down, I want it to be compiled to .class file, then it has to take those .class files and package it into jar file. For this, we use cmd, mvn test compile package 
+test -> it will run all junit tests. Whenever we develop any project, we write lot of junit test cases. junit test cases perform the testing of our code and verifies the code developed by us is appropriate or not. We will learn how to build junit test cases later. Suppose we have written 200 junit test cases, then all 200 junit test cases will be run by Maven.
+compile -> All our java code will be compiled and .class file will be generated.
+package -> Maven will take .class files, compress it and put it inside java archive.
+After cmd exceution, it will provide us with a path at the end. If we notice the path and file name, we can see that jar file name is picked up from Artifact Id. This jar file which is present inside target folder can be used for project deployment. If we obseve the log, we can see that first test was done and it has executed AppTest package which is present by default. Since there is no test case written by us, it has just run 1 empty method and marked test run as 1. Post that compilation is done and upon compilation, it has packaged our files and generated one jar file. Suppose, we want to delete this jar file as we want to add ore code inside it, then go back to cmd prompt and use cmd, mvn clean. Thi will clear up our existing jar file. Then we can create updated jar file.
+
+Go to pom.xml file and check tag, artifactId. Lets change it and compile and package the project. We can see that jar file name has also changed based on artifactId. This means jar file name is controlled by artifactId.
+When we compile a project, using cmd, mvn compile package, by default test also runs even if we don't use test.
+In the jar file name, we further see SNAPSHOT. We notice in pom.xml file that it has version as X.X.X-SNAPSHOT, it signifies that this jar file is still in development / testing phase. That's why it is termed as SNAPSHOT. Version has to do with the changes in our software. Any software will have 3 steps of versions provided. One is known as critical changes meaning we have done critical changes like adding many features, updation etc. The first zero in version specifies that. To represent the critical changes, we change the first zero to one. If we have done some minor or major changes not critical changes, then second zero will be increased by 1. If any minor change happens , then third zero is increased by 1. Once our project is completely developed and tested and is ready for deployment in production server, then version changes from SNAPSHOT to RELEASE. When we change the version from SNAPSHOT to RELEASE and compile the project, jar file name also changes from SNAPSHOT to RELEASE. jar file name is combination of artifact id and version. From the jar file , any developer can understand if it is ready for production deployment or not and accordingly we can find RELEASE branch in github which have production ready code in it.
 
 ****
 
@@ -81,50 +100,71 @@ RELEASE: This version has been finalized and is ready for production or delivery
 
 Note: Artifacts are stored in repositories (like Maven Central or private repositories(NEXUS / JFROG)) and can be dependencies for other project
 
-What are the types of Repositories?
+****
 
+When we join a company, many time they have their own private repository. Right now, whatever libraries we are downloading is coming from mvnrepository website which is a central repository. At times, comapny will have their own custom libraries developed in their project. This means that only their project / company people can access those libraries and no one else can access it. These libraries needs to be published somewhere so that all their team members can access it. In order to do that there are tools like NEXUS and JFROG. These are two important tools where a company can publish their own private libraries. 
+Anything which is jar file is termed as library. Even the project code which we are writing, if we package that in jar file, it is considered as a library because when we are downloading a dependncy , jar file is getting downloaded.
+
+Everytime, we do any changes in software and package it, build is done.
+
+****
+
+What are the types of Repositories?
 
 There are three types of repositories:
 
-1. Central Repository (Public): This is the default public repository provided by Maven, containing a huge collection of popular libraries and frameworks. When you declare a dependency in your pom.xml, Maven looks here first.
+1. Central Repository (Public): This is the default public repository provided by Maven, containing a huge collection of popular libraries and frameworks. When we declare a dependency in our pom.xml, Maven looks here first.
 
 2. Remote Repository (Private): Companies or teams might set up their own private repositories (e.g., using tools like Nexus or JFrog) to store internal libraries, proprietary software, or to maintain versions of their own code.
 
-3. Local Repository (.m2 directory): This is your personal local repository on your machine. When Maven downloads dependencies, they are cached here to avoid downloading them repeatedly. The default location for this local repository is typically ~/.m2/repository.
+3. Local Repository (.m2 directory): This is our personal local repository on our machine. When Maven downloads dependencies, they are cached here to avoid downloading them repeatedly. The default location for this local repository is typically ~/.m2/repository.
 
 What are Maven Goals?
-Maven defines specific tasks (called goals) that you can run to execute the build lifecycle of your project. Common goals are used to build, test, package, and clean your project. They can be executed manually or as part of the build process.
+Maven defines specific tasks (called goals) that we can run to execute the build lifecycle of your project. Common goals are used to build, test, package, and clean our project. They can be executed manually or as part of the build process.
 
-1. clean: Deletes the target directory and any compiled .class files from previous builds. This ensures that you start with a fresh build.
+1. clean: Deletes the target directory and any compiled .class files from previous builds. This ensures that we start with a fresh build.
 
-2. compile: Converts all the Java source files (.java) in your project into bytecode (.class) files that can be executed by the JVM.
+2. compile: Converts all the Java source files (.java) in our project into bytecode (.class) files that can be executed by the JVM.
 
-3. test: Runs unit tests using a testing framework like JUnit to ensure your code works correctly.
+3. test: Runs unit tests using a testing framework like JUnit to ensure our code works correctly.
 
 4. package: Packages the compiled code into an artifact, usually a .jar (Java Archive) or .war (Web Archive) file, which can be deployed or shared. This is typically the step before deployment to an environment (QA, UAT, DEV, PROD).
 
+****
 
+Many times, we want to skip junit test beacuse everytime we run a junit test, it takes lot of time. However, running junit test is mandatory step before deployment. In companies, it is mandatory to run junit test before production deployment and all test cases must pass. If junit test doesn't pass, our build (version of the software which we have developed) is not eligible for deployment to a server. When we want to run all junit test in one cmd, mvn does that and to do that, maven uses something known as Surefire plugin. Plugins are like extra features being given to existing application like browsers can have a plugin like adblocker. It can block unwanted advertisements or pop-ups in our browser which wll give us more safety. So, adblocker is a plugin which is providing us extra feature. Similarly, Maven has to run all junit test. In order to run all junit test, maven internally uses a Surefire plugin. Maven can help us configure plugins which can provide us give us benefits or extra features as per our projects requirement. 
+Sometimes running test cases can take upto 3-4 hours if its a big project because we have to test all the module.
+
+****
 
 To skip the test during packaging we can use the following command
- - mvn clean package -DskipTests=true
+ - mvn clean package -DskipTests=true -> surefire plugin skips the test.
+
+****
+
+Dependency inclusion means downloading dependency.
+
+How can we exclude some dependencies from downloading.
+
+****
 
 What is Dependency Exclusion?
 
-- Dependency Exclusion in Maven is a mechanism that allows you to remove unwanted transitive dependencies that are being pulled into your project. These transitive dependencies are usually automatically included when you add a library (dependency) to your project. However, sometimes you might not need all of them.
+- Dependency Exclusion in Maven is a mechanism that allows us to remove unwanted transitive dependencies that are being pulled into our project. These transitive dependencies are usually automatically included when we add a library (dependency) to our project. However, sometimes we might not need all of them.
 
 - By excluding unnecessary dependencies, you can reduce the size of your project and avoid conflicts with other dependencies.
 
 Breakdown:
 The Parent Dependency:
 
--spring-context is added as a direct dependency in your project.
-- When you add this dependency, Maven automatically resolves its transitive dependencies like spring-core, spring-beans, spring-aop, spring-expression, and spring-jcl.
+-spring-context is added as a direct dependency in our project.
+- When we add this dependency, Maven automatically resolves its transitive dependencies like spring-core, spring-beans, spring-aop, spring-expression, and spring-jcl.
 Transitive Dependencies:
 - These are transitive dependencies because they are required by spring-context, and Maven resolves them automatically.
 Excluding a Transitive Dependency (spring-aop):
-- Sometimes, you might not need all of these transitive dependencies. In this case, you might not want to include spring-aop in your project.
+- Sometimes, we might not need all of these transitive dependencies. In this case, we might not want to include spring-aop in our project.
 - The <exclusions> tag is used to exclude spring-aop.
-- This ensures that when you include spring-context, Maven will not include the spring-aop dependency in your project, even though it's a transitive dependency of spring-context.
+- This ensures that when we include spring-context, Maven will not include the spring-aop dependency in our project, even though it's a transitive dependency of spring-context.
 
 Advantage
 - Reduced Project Size
