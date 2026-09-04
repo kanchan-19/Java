@@ -31,6 +31,18 @@ Step 4:  Download Maven (Binary zip archive) and unzip the files. Move this fold
 
 ****
 
+Before Hibernate, people were using Eclipse Link which is also an ORM tool with Spring Data JPA. Spring Data JPA makes ORM tool implementation easier.
+
+Maven
+Whenever we are working in any project, we first create project structure. Whenever we create Java project, we can see that it has a particular structure like all the libraries in one folder, src folder. Suppose, we are developing a dynamic web project, it will have bit different structure from Java project like it will have build folder, Java Resources folder, webapp folder, WEB-INF etc. Same way, when we are working on any project, a right structure should be created like where backend code will be present, where frontend code will be developed etc. Who will create this project structure and how will it be created? This is where the first usage of Maven comes in picture. Maven helps us in creating project structure. If we won't have Maven, then everyone will start creating their own project structure. That's why it was decided to use Maven.
+
+Environment Variables
+Environment variables is a very important part of our operating system.
+How the shortcuts like appwiz.cpl, system.cpl, chrome works? Chrome has got installed in some drive in our system. When we search anything using windows+R, it searches where the software is physically installed on our system. It goes to that physical location where software is installed and then launches the software. To do this, run window will communicate with a concept in our OS known as environment variables. This environment variable section will hold the exact location where the software is present. Environment variables play a major role to keep the registry of where exactly a particular software is installed because if we won't the location, we won't be able to invoke that application.
+We can also use command prompt to start a software like start chrome. Here, command prompt will communicate with environment variables and find out the location where chrome is present. Once it knows the location of the software, it automatically goes to that location and launch the software. If we will remove environment variable section, then the shortcuts in run window and command prompt will not work.
+We have not yet set the environment variables for maven. So, maven's cmd won't work in cmd prompt.
+We cannot just maven alone as maven is a software tool that is developed purely using Java and Maven can't run until and unless Java platform is provided. This means mvn commands also search , where JDK is installed in our system and once it knows where is JDK, then it runs. This means only setting mvn path won't work. We also have to set Java path in environment variable.
+
 Every tool we see today, by default comes with maven but we don't use it. We prefer using mvn through cmd prompt.
 Eclipse by default comes with mvn. Open Eclipse -> Right click on Project Explorer -> Go to New -> Other -> Type Maven in Wizards. We can see that by deafult, Eclipse comes with Maven Project. But we won't use maven which comes by default within eclipse. We will use Maven tool as an external setup that we did.
 
