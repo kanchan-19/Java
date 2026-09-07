@@ -697,6 +697,84 @@ a. Spring Data JPA makes working with JPA easier by eliminating boilerplate code
 
 d. By default, Spring Data JPA uses Hibernate as the ORM (Object Relational Mapping) tool in Spring Boot applications (unless you configure another JPA provider manually).
 
+------------------------------------------------------------------------------------------------------------------
+****
+
+Create a new Hibernate project using maven.
+Right click on Package Explorer -> New -> Spring Starter Project -> Give the project name as hibernate_examples -> Next -> We can starter dependencies.
+https://start.spring.io ,url plays a major role in all our Spring Boot project to be created with a proper archetype.
+Starter dependencies are collection of dependencies to implement a particular technology. This means when we add one dependency tag, it will give us a bunch of dependencies to implement a particular technology. E.g. - We want to use Hibernate and  if we want to use hibernate with traditional approach, we have to add multiple dependencies like hibernate core, hibernate commons. Here, they have developed a single dependency known as Spring Data JPA. By adding this one dependency, we will end up seeing that lot of hibernate dependencies have got downloaded.
+
+There is a difference b/w starter dependency and transitive dependency.
+
+As we also want to interact with database, we will add MySQL Driver dependency as well while creating project.
+
+Once the project is created, we will first connect with database. Let's create one DB, hibernate_db. 
+Right click on project name -> Run As -> Spring Boot App ->  We can see in console that it throws an error, 'Failed to configure a DataSource: 'url' attribute is not specified and no embedded datasource could be configured.' This means when we starts the project, Spring Boot tells us I am not able to find which database this project has to get connected with i.e. our project is not able to connect with database. To connect our project with database , navigate to src/main/resources and open application.properties file. Property file is a unique file in which content is stored as key value pair. There is no data type here i.e. value doesn't have data type like string, boolean, int etc. This property file is the one where we can configure database. 
+
+# Connect to database
+
+spring.datasource.url = jdbc:mysql://localhost:3306/hibernate_db
+spring.datasource.username = root
+spring.datasource.password = Test_123
+
+We can see that values are in doble quote. It doesn't have data type.
+
+Property files are special files that gets stored with the extension .properties.
+
+Now, when we start our project, Spring Boot will automatically read this .properties file and it will establish connection with database w/o us writing a single line of Java code.
+
+Whenever we add Spring Data JPA, MySQL Driver, it's very important to mention datasource details in .properties file. If we are not using the mentioned dependencies, then we can skip datasource details. 
+
+Now, we will create Entity class. When we create Entity class, our subpackage name should be part of base package. Otherwise, Spring Boot won't be able to scan the package. Since base package name is com.example.hibernate, all our further packages should be sub-package of this package. So, we will name the package for entity class as com.example.hibernate.entity. Some beginners might create this package in src/test/java instead of src/main/java which will cause issues and it won't work as per our requirement. All our Java backend code goes to src/main/java and all our test code goes to src/test/java. Create Employee entity class in com.example.hibernate.entity package. Its mandatory for an Entity class to have primary key else it will throw error.
+
+This entity class will automatically generate employees table with mentioned column names and constraints in database.
+
+Encapsulation is mandatory as it hides internal structure of object. If we don't do encapsulation, we will compromise with safety. When data needs to be persisted, the object is serialized into 0’s and 1’s. That serialized object travels over the network or to the persistence layer, where it is deserialized back into an object. The ORM or database layer then extracts the object’s fields and stores the content (field values) in the database server, typically as rows and columns rather than the raw serialized object.
+Object → serialized → transported → deserialized → mapped → stored in DB.
+
+package com.example.hibernate.entity;
+
+//All imports will be done from jakarta.persistence.* package.
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+//Database table name is plural form unlike Entity class name. When entity class and database table name is different, we use annotation, @Table(name = "employees"). This means that entity class Employee is mapped to our database table name, employee.
+@Table(name = "employees")
+public class Employee {
+ 
+// To mark id as primary key, we use @Id annotation
+ @Id
+// We want id to be auto-generated like we use auto-increment in MySQL. For this we use annotation, @GeneratedValue(strategy = GenerationType.IDENTITY)
+ @GeneratedValue(strategy = GenerationType.IDENTITY)
+ private long id;
+ 
+// We want the name column to be not null. So, we will use annotation, @Column(name = "name", length = 45, nullable = false) for this constraint
+ @Column(name = "name", length = 45, nullable = false)
+ private String name;
+ 
+// Since emailId is in camel case and in database it will be in snake case, so we will use annotation, @Column(name = "email_id") else it will throw error.
+ @Column(name = "email_id", length = 45, nullable = false, unique = true)
+ private String emailId;
+ 
+@Column(name = "mobile_no", length = 10, nullable = false, unique = true)
+ private String mobileNo;
+
+}
+
+Now, when we run the project, we will see that no table is created in DB. In order to make our Entity class translate to a table, we will have to add another property in application.properties file.
+
+spring.jpa.hibernate.ddl-auto = create
+
+It means every time we start our project, it is going to create a table. If a table already exists with this name, then it will delete that table and create a new one. Now, when we run the project, we can see that table is created in DB.
+
+****
+------------------------------------------------------------------------------------------------------------------------
 
 
 What is repository layer in spring boot?
@@ -748,7 +826,7 @@ spring.datasource.url=jdbc:mysql://localhost:3306/test_crud_db
 spring.datasource.username=root
 spring.datasource.password=test
 
-#It will drop existing table and create a new one every time we star the project
+#It will drop existing table and create a new one every time we start the project
 #spring.jpa.hibernate.ddl-auto=create
 
 #It will create new table if table doesnot exist and if table is already present then will use the same table
