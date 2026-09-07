@@ -207,6 +207,80 @@ With exclusion
 
 Note:
 These Spring Boot starter dependencies are a special type of dependency provided by Spring Boot that bundle several related dependencies together for convenience.
+-----------------------------------------------------------------------------------------------------------------------
+STS Setup with JUnit
 
+Search for Download STS  -> Go to Spring Tools -> Scroll down and select Eclipse Tab -> Download the one which is for Windows -> Extract it -> Open the folder and we can see SpringToolsForEclipse.exe -> Right Click -> Run as administrator -> this will launch our STS tool
+
+STS is basically a modified version of Eclipse. They modified Eclipse and added one extra package using which we can create Spring Boot projects. We can use Eclipse, STS or IntelliJ for creating Spring Boot project.
+
+Once STS is launched , go to File -> New -> Spring Starter Project (We are able to see it because of STS. This package is missing in Eclipse.) -> Usually, we keep project name and artifact id as same. -> Select Maven in Type as dependency and build management tool. ->  Version of the project is SNAPSHOT which means our project is still in development phase. -> Select the Java Version which is available on your system. (Minimum version of Java for Spring Boot 3 should be 17 and above.) ->  Packaging as Jar  (Whenever our project consists of purely java code and it does not have any frontend code, it is going to be packaged as jar file. Earlier we had gone with War file as both backend and frontend code were present like in Servlets and JSP.) -> Language which we are using is Java -> Next -> Next -> Finish.
+
+While creating a Spring Boot project, stay connected to internet as it is created using maven and Maven will use an archetype for Spring Boot. Spring Boot project will have their dependencies added automatically. That is what archetype Maven is doing here. It is automatically creating a Spring Boot project with required default libraries.
+
+What if we are using Eclipse for Spring Boot project creation as Spring Starter Project feature is missing from it?
+To create a Spring Boot project in Eclipse, go to internet and search for  spring initializr. Spring Initializr is a website where officially Spring Boot project structure can be created using Maven. Here archetype will be Maven for Spring Boot project. We can generate the project, extract it and import it in Eclipse. Go to Eclipse -> Right click on project Explorer section -> Import -> Import ->  In import wizard tab, select Maven -> Existing Maven Projects -> Next -> Go to Browse in Root Directory and select the project created using Spring Initializr -> Finish
+
+When we see the project structure, we can see lots of sections in it.
+src/test/java  -> here, we write junit test cases.
+@Test -> It’s the default annotation. This annotation will automatically run the method which means we don't need to create object or call the method. If the method runs successfully, junit will capture the result as pass and if it doesn't run successfully, junit will capture the result as failure. Edit the DemoApplicationTests.java as below,
+package com.example.demo;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class DemoApplicationTests {
+
+	@Test
+	void test1() {
+		System.out.println("From Test1");
+	}
+
+}
+Right click on DemoApplicationTests.java -> Run As -> JUnit Test
+A Junit window gets opened up in left side and we can see a green checkmark indicator for test1() . This means that test1() is executed successfully and we can also see the o/p in console.
+
+If we write something as int x = 10/0, junit test will fail and we can see a red indicator in JUnit window.
+
+If we write methods in Junit Test and run it as Junit Test, we can see that both method gets executed. 
+In the latest version of Junit, even if an exception occurs and we don't handle it, it will not stop other JUnit Tests. Earlier it was not like this. If an exception occurs in Junit, it would crash and stop.
+
+What if we want to run a particular Junit Test?
+Select the name of that particular method -> right click -> Run As -> JUnit Test
+Maven runs this test in reality as it has Surefire plug-in which runs JUnit Test automatically and that is where mvn test cmd comes in picture. 
+Right click on your project name -> Properties -> Click on Show in System Explorer which is in yellow color arrow beside Location in Resource Tab -> Maven is already configured in our system. Double click on demo -> cmd -> enter -> write mvn test in cmd prompt window -> we can see that all the tests get executed. So, this test execution is done by Maven. When we are running the test using mvn test, we can't see the o/p in IDE as we could see earlier when we were running JUnit test in STS by using right click -> Run As -> JUnit Test. These results are not shown in IDE, rather it is shown in cmd prompt.
+
+Suppose before every test, we want to run a particular method like before every test, we want to connect to database, open a file etc. For this, we are going to use another method known as beforeTest() and annotate it with @BeforeEach. The moment we do this, before every test, beforeTest() will run. 
+
+@BeforeEach
+	void beforeTest() {
+		System.out.println("Before Test");
+	}
+
+
+If we want to run a particular method after every JUnit test like closing a file, then we will annotate that methos with @AfterEach.
+
+@AfterEach
+	void afterTest() {
+		System.out.println("After Test");
+	}
+
+
+We want to run a method before all methods which we can see in test file because it has some configurations in it. 
+
+@BeforeAll	
+	static void beforeClass() {
+		System.out.println("Before All");
+	}
+
+If we won't use static keyword, it won't work. It will be like main method and it will run only once and will run before all methods.
+
+If we want to run a method after all the JUnit Tests are executed, then use @AfterAll annotation.
+
+@AfterAll	
+	static void afterClass() {
+		System.out.println("After all");
+	}
 
 
