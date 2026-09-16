@@ -1544,7 +1544,8 @@ Since entity class name starts with uppercase, it needs to start with uppercase 
 For entity class, we have to give a shortcut name like e, that is rule over here.
 In the o/p, we want all the fields that belongs to this partciular entity class. That's why, we use e from.
 Email Id provided by us should be substituted dynamically in query. For this, we use annotation, @Param with any name like ("x"). This means wherever in my query, we will use x, it will be replaced with email provided by us.
-We can consider e as an object of Entity class or reference to this entity, Employee. This means whatever variable is present in class, those can be accessed using the object, e
+We can consider e as an object of Entity class or reference to this entity, Employee. This means whatever variable is present in class, those can be accessed using the object, e.
+ 
 *****************************************************************
 
 Example:
@@ -1580,9 +1581,11 @@ public interface EmployeeRepository extends CrudRepository<Employee, Long> {
 	
 	@Query("Select e from Employee e where e.mobile=:m")
 	Optional<Employee> searchByMobile(@Param("m") String mobile);
-	
-	@Query("select e from Employee e where e.emailId=:x and e.mobile=:m")
-	Optional<Employee> searchByEmailAndMobile( String email,@Param("m") String mobile);
+
+//What if we want to find the record based on email and mobile no.
+//Reference to the object of entity class, Employee is e.
+	@Query("select e from Employee e where e.emailId=:email and e.mobileNo=:mobile")
+	Employee findByEmailIdAndMobileNo(@Param("email") String email, @Param("mobile") String mobile);
 	
 	@Query("select e from Employee e where e.emailId=:x or e.mobile=:m")
 	List<Employee> searchByEmailIdOrMobile(@Param("x") String email,@Param("m") String mobile);
@@ -1811,10 +1814,16 @@ class DemocrudApplicationTests {
 ############################
 Native SQl Query
 ##########################
+
+******************************************
+This is an excellent feature provided by Hibernate. If we aren't confortable with JPQL, we have an option to use MySQL in hibernate. For this, we use value and nativeQuery attributes of @Query.
+******************************************
+
  -> Raw SQL can be written with hibernate
 Add this in repsoitory layer
 --------------------------------
-        @Query(value = "SELECT * FROM employees WHERE email_id = ?1", nativeQuery = true)
+// ?1 i.e. first argument is replaced with email dynamically.
+    @Query(value = "SELECT * FROM employees WHERE email_id = ?1", nativeQuery = true)
 	Optional<Employee> findByEmailUsingSQl(String email);
 	
 	@Query(value = "SELECT * FROM employees WHERE mobile = ?1", nativeQuery = true)
