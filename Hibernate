@@ -469,12 +469,12 @@ What is Spring IOC?
 Bean life cycle
 #####################################
 
-Bean is Created---->Dependencies Injected (@Autowired)----->Execution(Bean is use by the application)------>Destruction of the bean
+Bean is Created---->Dependencies Injected (@Autowired)----->Execution(Bean is used by the application)------>Destruction of the bean
 
 ####################
 Junit
 #####################
--> We performe testing at the code level. This called as Unit / Whitebox testing
+-> We performe testing at the code level. This is called as Unit / Whitebox testing
 -> When we create Spring boot project by default we will get Junit library
 
 Annotations in Junit
@@ -1875,6 +1875,109 @@ Add this inside Junit Test
 			System.out.println("No record Found");
 		}
 	}
+
+*****************
+	• There are 2 people, person A and person B. Person A knows everything about person B i.e. first person knows everything about the second person but the second person knows nothing about first person, then this is known as unidirectional mapping. e.g. spy agencies where spy knows everything about a person but that person doesn't know anything about the spy.
+
+	• In bi-directional mapping both the person knows everything about each other.
+
+	• Suppose we have two entity class, Employee and Company
+Unidirectional - Employee knows everything about company but company doesn't know about employee i.e. employee holds every detail about company as it has reference of company class but company doesn't hold any detail of employee as it has no employee mapping.
+Bidirectional - When we login in amazon it should gives us all order details for my customer id. This means that inside cusomer entity class, order reference should be present. Also, customer details should appear for every detail so that order could be delivered correctly whcih means order class should also have customer reference. Both entities hold references to each other, but only one side owns the foreign key.
+
+With unidirectional and bidirectional mapping comes fetch type.
+
+	• We are taking the example of employee and company for understanding unidirectional mapping though in reality it has bidirectional mapping. However, just for understanding purpose, we will consider that employee has reference of company but company doesn't have reference of employee.
+
+Create a package for entity classes and create two entity classes, Employee and Company.
+
+Employee.java
+package com.example.hibernate.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+
+@Entity
+public class Employee {
+	
+	@Id
+	private long id;
+	
+	private String name;
+	
+	@ManyToOne
+	@JoinColumn(name = "company_id")
+	private Company company;
+	
+	//setters
+	
+	public void setId(long id) {
+		this.id = id;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public void setCompany(Company company) {
+		this.company = company;
+	}
+	
+	//getters
+	
+	public long getId() {
+		return this.id;
+	}
+	
+	public String getName() {
+		return this.name;
+	}
+	
+	public Company getCompany() {
+		return this.company;
+	}
+
+}
+
+Company.java
+package com.example.hibernate.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+@Entity	
+public class Company {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	
+	private String name;
+	
+	// setters
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	
+	public String getName() {
+		return this.name;
+	}
+	
+}
+
+Create package for repository layer and create EmployeeRepository. While creating interface, EmployeeRepository, go to Extended interfaces and click on Add and select JpaRepository -> OK -> Replace<T, ID> in extended interfaces name with <Employee, Long> -> Finish.
+*****************
 
 ##############################################
 OneToMany Mapping
