@@ -2034,16 +2034,16 @@ class HibernateMappingApplicationTests {
 
 }
 
-After running the test, saveEmployee() , when we check in db for employees table detail, we can see that company_id column is null as data is getting stored in employees table but it is not getting stored in company table. This is where fetch type comes into picture. When we are storing data in table, we are using employeeRepository.save() due to which only Employee entity is loaded in memory which means our Java program is able to interact only with employees table. It's not able to interact with its associated table, company. We want that when employeeRepository.save(emp) runs, all the data of Employee entity as well as its associated Entity class should be loaded in memory. Instead of company table getting loaded in memory, a proxy table is getting loaded. No data is getting saved in that proxy table.
+After running the test, saveEmployee(), we see that the company_id column is null because the Employee entity is saved but the associated Company entity is not persisted. This is where cascading comes into play. Without cascade, Hibernate won’t persist the company automatically, so we either need to save the company explicitly or enable cascade on the relationship. If we don’t configure cascade, Hibernate treats cmp as a transient object and doesn’t save it, leaving company_id null. Fetch type (EAGER/LAZY) controls how associations are loaded from the database, but saving associated entities requires cascade.
 
-How to load associated table in RAM?
-We use fetch type for this. The first fetch type is EAGER which is very dangerous and we shouldn't use it. When we are using FetchType as EAGER, it says when we are loading entity class, employee, all its associated entity class with its data will be loaded in memory even if we are not using it. Let's assume employee table is associated with salary table, company table, address table, incentives table etc. Now, when we load employee, all these tables and its data is loaded in memory even when we are not using it in logic. This will cause performance issue. Suppose we are loading an employee and she is working for 10 years. All 10 years of incentives and salary that she has got, its data will be loaded in RAM which is uneccesarily wasting computers memory and if the memory utilization is on higher side, speed of our application will reduce. That's why FetchType, EAGER should not be used in prod environment. It should be used only in test or dev environment as it's easy to implement and make our development faster. We can easily build an application for showing it to customer for proof of concept.
+The first fetch type is EAGER. When we use FetchType.EAGER, loading an entity like Employee also loads all its associated entities (such as Salary, Company, Address, Incentives) into memory, even if we don’t use them. This can cause performance issues because large amounts of unnecessary data are fetched — for example, loading 10 years of salary and incentives history when we only need basic employee info. This wastes memory and can slow down the application. That’s why EAGER should be used carefully: it’s fine for small, always-needed associations, but for large collections or rarely-used data, LAZY is the better choice. In development or proof-of-concept demos, EAGER can be convenient, but in production, LAZY is generally preferred to avoid performance bottlenecks.
+
 Edit the ManyToOne annotation line in Employee entity as below for EAGER FetchType.
 @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
 
 Now, when we run the test, we can see that data of both employees and company table is getting stored in table.
 
-CascadeType.ALL means when we make any changes in table A, it should automatically cascasde to table B as table is associated with table A. This means when we are saving employee details, company details should also get saved.
+CascadeType.ALL means when we make any changes in table A, it should automatically cascasde to table B as table B is associated with table A. This means when we are saving employee details, company details should also get saved.
 
 First all the table needs to be loaded in memory and once its loaded, one tables data should be cascaded to its associated table.
 
@@ -2100,7 +2100,7 @@ public class Company {
 	
 	private String name;
 	
-	@OneToMany(mappedBy = "company") // mappedBy is used to tell employee reference variable is mapped to company reference variable. This is how association b/w objects are getting created. We write mappedBy in non-owning side.
+	@OneToMany(mappedBy = "company") // mappedBy is used to tell employee reference variable is mapped to company reference variable. This is how association b/w objects are getting created. We write mappedBy in non-owning / inverse side.
 	private List<Employee> employee;
 	
 	// setters
@@ -2201,8 +2201,59 @@ It won't work. Now alter the mapping line in Company entity.
 
 Now, run the test again. We can see that data from both employees and company table get deleted in DB.
 
-We have other CascadeType as well
+We have other CascadeType as well.
+CascadeType.ALL means all operations (PERSIST, MERGE, REMOVE, REFRESH, DETACH) are cascaded. This is useful when child entities are fully dependent on the parent, such as a Customer with its Orders.
+
+CascadeType.PERSIST cascades the save operation. When you save a new parent entity, its new child entities are also saved automatically. For example, saving a new Customer will also save its new Orders.
+
+CascadeType.MERGE cascades updates. If you merge a detached parent entity, its child entities are also merged. For instance, updating a detached Customer will merge its Orders.
+
+CascadeType.REMOVE cascades deletions. Deleting a parent entity will also delete its child entities. For example, deleting a Customer will delete all linked Orders.
+
+CascadeType.REFRESH cascades refresh operations. Refreshing a parent entity reloads its child entities from the database. For example, refreshing a Customer will refresh its Orders.
+
+CascadeType.DETACH cascades detach operations. Detaching a parent entity from the persistence context will also detach its child entities. For example, detaching a Customer will detach its Orders.
+
+	• One to One Unidirectional Mapping
+FetchType of One-to-One by default is EAGER and in FetchType.EAGER, @Transactional annotation is not required.
+Mapping can be done more easily using plug-in. We don't even have to write the code, the way we are doing now. We will learn about this plug-in later.
+Step 1: Create User and Profile entity class
+
+Step 2: Create interface UserRepository and ProfileRepository
+
+Step 3: Create UserRepository and ProfileRepository object in HibernateMappingApplicationTests.java. Also, create the below Tests.
+We want that when we save the user, profile should also get saved.
+
+
 *****************
+LAZY vs EAGER
+
+When we use FetchType.EAGER, Hibernate loads the associated entities immediately along with the parent entity. That means as soon as you fetch the parent, Hibernate issues a query with joins to bring in all related data. This ensures you won’t face LazyInitializationException later, but it can lead to over-fetching—loading data you don’t actually need. It also makes the initial query heavier and keeps the database connection busy until all associations are retrieved.
+
+On the other hand, FetchType.LAZY only loads the parent entity at first. The associated entities are represented as proxies and are fetched only when you actually access them in code. This makes the initial query lighter and faster, but it requires the database connection (and Hibernate session) to still be open when you access those associations. If the session is closed, you’ll get a LazyInitializationException. Another drawback is the potential for the “N+1 query problem,” where accessing a collection of associations triggers multiple queries instead of one optimized join.
+
+So in short:
+
+EAGER = immediate loading, safe from lazy exceptions, but heavier queries and possible over-fetching.
+
+LAZY = deferred loading, lighter initial queries, but requires careful session management and can cause multiple queries if not handled properly.
+
+FetchType (EAGER or LAZY) does not control the database connection lifecycle. The lifecycle of the DB connection is managed by Hibernate’s Session (or JPA’s EntityManager) and the surrounding transaction boundaries, not by the fetch strategy.
+
+Here’s the distinction:
+
+Connection Lifecycle
+A database connection is opened when a Hibernate session begins (usually at the start of a transaction).
+It is closed when the session/transaction ends.
+This is independent of whether associations are loaded eagerly or lazily.
+
+FetchType’s Role
+
+EAGER: Decides to load associations immediately when the parent entity is fetched. This happens while the session is open, so the data is available even after the session closes.
+
+LAZY: Defers loading until the association is accessed. If you try to access it after the session has closed, Hibernate cannot go back to the DB, and you’ll hit a LazyInitializationException.
+
+------------------------------------------------------
 
 @Autowired in Spring Data JPA is used to automatically inject dependencies (like repositories, services, or beans) into our classes without manually instantiating them. It works by asking the Spring IoC container to find a matching bean by type and wire it into the target field, constructor, or setter.
 
