@@ -1889,7 +1889,7 @@ With unidirectional and bidirectional mapping comes fetch type.
 
 	• We are taking the example of employee and company for understanding unidirectional mapping though in reality it has bidirectional mapping. However, just for understanding purpose, we will consider that employee has reference of company but company doesn't have reference of employee.
 
-Create a package for entity classes and create two entity classes, Employee and Company.
+Step 1: Create a package for entity classes and create two entity classes, Employee and Company.
 
 Employee.java
 package com.example.hibernate.entity;
@@ -1976,9 +1976,269 @@ public class Company {
 	
 }
 
-Create package for repository layer and create EmployeeRepository. While creating interface, EmployeeRepository, go to Extended interfaces and click on Add and select JpaRepository -> OK -> Replace<T, ID> in extended interfaces name with <Employee, Long> -> Finish.
+Step 2: Create package for repository layer and create EmployeeRepository. While creating interface, EmployeeRepository, go to Extended interfaces and click on Add and select JpaRepository -> OK -> Replace<T, ID> in extended interfaces name with <Employee, Long> -> Finish.
+EmployeeRepository.java
+package com.example.hibernate.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.Employee;
+
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+}
+
+Similarly create interface, CompanyRepository.
+CompanyRepository.java
+package com.example.hibernate.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.Company;
+
+public interface CompanyRepository extends JpaRepository<Company, Long> {
+	
+
+
+}
+
+Step 3: Now, we want to save employee details. Employee entity has reference of company entity which means when we save save employee details, company details also get saved.
+HibernateMappingApplicationTests.java
+package com.example.hibernate;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.example.hibernate.entity.Company;
+import com.example.hibernate.entity.Employee;
+import com.example.hibernate.repository.EmployeeRepository;
+
+@SpringBootTest
+class HibernateMappingApplicationTests {
+
+	@Autowired
+	private EmployeeRepository employeeRepository;
+	
+	@Test
+	public void saveEmployee() {
+		Company cmp = new Company();
+		cmp.setName("Wipro");
+		
+		Employee emp = new Employee();
+		emp.setName("Preeti");
+		emp.setCompany(cmp);
+		
+		employeeRepository.save(emp);
+	}
+
+}
+
+After running the test, saveEmployee() , when we check in db for employees table detail, we can see that company_id column is null as data is getting stored in employees table but it is not getting stored in company table. This is where fetch type comes into picture. When we are storing data in table, we are using employeeRepository.save() due to which only Employee entity is loaded in memory which means our Java program is able to interact only with employees table. It's not able to interact with its associated table, company. We want that when employeeRepository.save(emp) runs, all the data of Employee entity as well as its associated Entity class should be loaded in memory. Instead of company table getting loaded in memory, a proxy table is getting loaded. No data is getting saved in that proxy table.
+
+How to load associated table in RAM?
+We use fetch type for this. The first fetch type is EAGER which is very dangerous and we shouldn't use it. When we are using FetchType as EAGER, it says when we are loading entity class, employee, all its associated entity class with its data will be loaded in memory even if we are not using it. Let's assume employee table is associated with salary table, company table, address table, incentives table etc. Now, when we load employee, all these tables and its data is loaded in memory even when we are not using it in logic. This will cause performance issue. Suppose we are loading an employee and she is working for 10 years. All 10 years of incentives and salary that she has got, its data will be loaded in RAM which is uneccesarily wasting computers memory and if the memory utilization is on higher side, speed of our application will reduce. That's why FetchType, EAGER should not be used in prod environment. It should be used only in test or dev environment as it's easy to implement and make our development faster. We can easily build an application for showing it to customer for proof of concept.
+Edit the ManyToOne annotation line in Employee entity as below for EAGER FetchType.
+@ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+
+Now, when we run the test, we can see that data of both employees and company table is getting stored in table.
+
+CascadeType.ALL means when we make any changes in table A, it should automatically cascasde to table B as table is associated with table A. This means when we are saving employee details, company details should also get saved.
+
+First all the table needs to be loaded in memory and once its loaded, one tables data should be cascaded to its associated table.
+
+Because of FetchType, EAGER, we are also getting company details when we are fetching employee details in below test.
+@Test
+	void getEmployeeDetails() {
+		Employee emp = employeeRepository.findById(0L).get();
+		Company cmp = emp.getCompany();
+		
+		System.out.println(emp.getName());
+		System.out.println(cmp.getName());
+	}
+Suppose we don't want company details, we only need employee details, stil we are getting company details in memory because of EAGER fetch. Company table data is loaded in company object and object is stored in heap memory which means heap memory is getting wasted.
+
+Default fetch type for @ManyToOne in JPA is FetchType.EAGER. So, even if we don't write fetch type in Employee entity, by default it will be EAGER.
+
+FetchType.LAZY means only when our logic demands , then associated table data will be loaded. Until and unless we don't write the line, Company cmp = emp.getCompany(), it's data will not be loaded in memory. If we write this line, its data will be loaded in memory but we won't be able to read that data.
+Change the ManyToOne mapping line in Employee etity as below:
+@ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+
+Now, when we run the test, getEmployeeDetails(), we aren't able to print, company details. This is happening because when we are using the line, employeeRepository.findById(0L), it connects to DB, fetches data, store it in Employee entity object and closes DB connection.
+DB has concept of Connection pool which restricts the no. of concurrent connections or the no. of connections at a time. We can set that limitation.
+As the connection gets closed, Employee entity is not able to interact with company table. We need to keep the connection open till the end of method. For this, we use annotation, @Transcational.
+@Test
+	@Transactional
+	void getEmployeeDetails() {
+		Employee emp = employeeRepository.findById(0L).get(); // At this line, only employee data will be fetched but its associated table, company data is not fetched.
+		Company cmp = emp.getCompany(); // Here, hibernate sees that we have to interact with company table so data from company table is fetched.
+		
+		System.out.println(emp.getName());
+		System.out.println(cmp.getName());
+		// DB connection closes here.
+	}
+
+	• In Bidirectional mapping, we have to do reverse mapping as well. We will take the example of Employee and Company entity over here also.
+
+Company.java
+package com.example.hibernate.entity;
+
+import java.util.List;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+
+@Entity	
+public class Company {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	
+	private String name;
+	
+	@OneToMany(mappedBy = "company") // mappedBy is used to tell employee reference variable is mapped to company reference variable. This is how association b/w objects are getting created. We write mappedBy in non-owning side.
+	private List<Employee> employee;
+	
+	// setters
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public void setEmployee(List<Employee> employee) {
+		this.employee = employee;
+	}
+	
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	
+	public String getName() {
+		return this.name;
+	}
+	
+	public List<Employee> getEmployee(){
+		return this.employee;
+	}
+	
+}
+
+HibernateMappingApplicationTests.java
+package com.example.hibernate;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.example.hibernate.entity.Company;
+import com.example.hibernate.entity.Employee;
+import com.example.hibernate.repository.CompanyRepository;
+import com.example.hibernate.repository.EmployeeRepository;
+
+import jakarta.transaction.Transactional;
+
+@SpringBootTest
+class HibernateMappingApplicationTests {
+
+	@Autowired
+	private EmployeeRepository employeeRepository;
+	
+	@Autowired
+	private CompanyRepository companyRepository;
+	
+	@Test
+	public void saveEmployee() {
+		Company cmp = new Company();
+		cmp.setName("Wipro");
+		
+		Employee emp = new Employee();
+		emp.setName("Preeti");
+		emp.setCompany(cmp);
+		
+		employeeRepository.save(emp);
+	}
+	
+	@Test
+	@Transactional
+	void getEmployeeDetails() {
+		Employee emp = employeeRepository.findById(0L).get();
+		Company cmp = emp.getCompany();
+		
+		System.out.println(emp.getName());
+		System.out.println(cmp.getName());
+	}
+	
+	@Test
+	@Transactional // This annotation is coming from Hibernate not Spring Boot
+	void getAllEmployeeDetails() {
+		Company cmp = companyRepository.findById(1L).get();
+		List<Employee> employees = cmp.getEmployee();
+		for(Employee emp: employees) {
+			System.out.print(emp.getId() + " ");
+			System.out.println(emp.getName());
+		}
+	}
+
+}
+
+	• What is the advantage of cascading?
+Let's delete company using the below test
+@Test
+	void deleteCompany() {
+		companyRepository.deleteById(1L);
+	}
+
+It won't work. Now alter the mapping line in Company entity.
+@OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
+
+Now, run the test again. We can see that data from both employees and company table get deleted in DB.
+
+We have other CascadeType as well
 *****************
 
+@Autowired in Spring Data JPA is used to automatically inject dependencies (like repositories, services, or beans) into our classes without manually instantiating them. It works by asking the Spring IoC container to find a matching bean by type and wire it into the target field, constructor, or setter.
+
+🔹 Injection Styles
+Spring allows three ways to use @Autowired:
+
+1. Field Injection
+
+Example:
+@Autowired
+private Repo repo;
+
+Pros: Concise, quick to write
+Cons: Harder to test, less explicit
+
+2. Setter Injection
+
+Example:
+@Autowired
+public void setRepo(Repo repo) {
+    this.repo = repo;
+}
+
+Pros: Good for optional dependencies
+Cons: Object is incomplete until setter runs
+
+3. Constructor Injection (Recommended)
+
+Example:
+@Autowired
+public Service(Repo repo) {
+    this.repo = repo;
+}
+
+Pros: Immutable, explicit, test-friendly
+Cons: Slightly more verbose
 ##############################################
 OneToMany Mapping
 ############################################
