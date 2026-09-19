@@ -2060,13 +2060,11 @@ Suppose we don't want company details, we only need employee details, stil we ar
 
 Default fetch type for @ManyToOne in JPA is FetchType.EAGER. So, even if we don't write fetch type in Employee entity, by default it will be EAGER.
 
-FetchType.LAZY means only when our logic demands , then associated table data will be loaded. Until and unless we don't write the line, Company cmp = emp.getCompany(), it's data will not be loaded in memory. If we write this line, its data will be loaded in memory but we won't be able to read that data.
-Change the ManyToOne mapping line in Employee etity as below:
+FetchType.LAZY means only when our logic demands , then associated table data will be loaded. The associated table data is loaded only when our logic demands it. Until we access it (e.g., Company cmp = emp.getCompany()), the data is not fetched into memory. When we call this line, Hibernate will load the Company entity from the database, provided the session is still open. If the session is closed, accessing it will throw a LazyInitializationException.
+Change the ManyToOne mapping line in Employee entity as below:
 @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
 
-Now, when we run the test, getEmployeeDetails(), we aren't able to print, company details. This is happening because when we are using the line, employeeRepository.findById(0L), it connects to DB, fetches data, store it in Employee entity object and closes DB connection.
-DB has concept of Connection pool which restricts the no. of concurrent connections or the no. of connections at a time. We can set that limitation.
-As the connection gets closed, Employee entity is not able to interact with company table. We need to keep the connection open till the end of method. For this, we use annotation, @Transcational.
+When we run getEmployeeDetails(), the call to employeeRepository.findById(0L) opens a session, fetches the Employee data, and then closes the session immediately after returning the entity. Because the company association is marked as LAZY, Hibernate does not fetch the Company data at that point. Later, when we call emp.getCompany(), Hibernate tries to issue another query to load the company. But since the session is already closed, Hibernate cannot execute the query, and this results in a LazyInitializationException. By annotating the method with @Transactional, Spring keeps the session open for the entire method, allowing Hibernate to fetch the company data on demand.
 @Test
 	@Transactional
 	void getEmployeeDetails() {
@@ -2199,7 +2197,7 @@ Let's delete company using the below test
 It won't work. Now alter the mapping line in Company entity.
 @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
 
-Now, run the test again. We can see that data from both employees and company table get deleted in DB.
+Now, run the test again. We can see that data from both employees and company table get deleted in DB. This is happening because of CascadeType.ALL.
 
 We have other CascadeType as well.
 CascadeType.ALL means all operations (PERSIST, MERGE, REMOVE, REFRESH, DETACH) are cascaded. This is useful when child entities are fully dependent on the parent, such as a Customer with its Orders.
@@ -2216,16 +2214,193 @@ CascadeType.DETACH cascades detach operations. Detaching a parent entity from th
 
 	• One to One Unidirectional Mapping
 FetchType of One-to-One by default is EAGER and in FetchType.EAGER, @Transactional annotation is not required.
+
 Mapping can be done more easily using plug-in. We don't even have to write the code, the way we are doing now. We will learn about this plug-in later.
+
 Step 1: Create User and Profile entity class
+User.java
+package com.example.hibernate.entity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+
+@Entity
+public class User {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	
+	private String name;
+	
+	@OneToOne(cascade = CascadeType.ALL) // A user can access the profile but profile can't access user
+	@JoinColumn(name = "profile_id")
+	private Profile profile;
+	
+	// setters
+	
+	public void setId(long id) {
+		this.id = id;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public void setProfile(Profile profile) {
+		this.profile = profile;
+	}
+	
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	
+	public String getName() {
+		return this.name;
+	}
+	
+	public Profile getProfile() {
+		return this.profile;
+	}
+}
+
+Profile.java
+package com.example.hibernate.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+@Entity	
+public class Profile {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	
+	private String description;
+	
+	// setters
+	
+	public void setId(long id) {
+		this.id = id;
+	}
+	
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	
+	public String getDescription() {
+		return this.description;
+	}
+}
 
 Step 2: Create interface UserRepository and ProfileRepository
+UserRepository.java
+package com.example.hibernate.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.User;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+}
+
+ProfileRepository.java
+package com.example.hibernate.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.Profile;
+
+public interface ProfileRepository extends JpaRepository<Profile, Long> {
+
+}
 
 Step 3: Create UserRepository and ProfileRepository object in HibernateMappingApplicationTests.java. Also, create the below Tests.
 We want that when we save the user, profile should also get saved.
+@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
+	private ProfileRepository profileRepository;
+	
+	@Test
+	void saveUser() {
+		Profile profile = new Profile();
+		profile.setDescription("Hello Hibernte peeps! How your study is going?");
+		
+		User user = new User();
+		user.setName("Komal");
+		user.setProfile(profile);
+		
+		userRepository.save(user);
+	}
+	
+	@Test
+	void getUserDetails() {
+		User user = userRepository.findById(1L).get();
+		Profile profile = user.getProfile();
+		
+		System.out.println(user.getName());
+		System.out.println(profile.getDescription());
+	}
 
+Now, change the FetchType to LAZY in User Entity. Replace @OneToOne(cascade = CascadeType.ALL) this line with @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL). Also, add @Transactional annotation in test, getUserDetails(). This will keep the session open until the end of this method.
+
+	• One to One Bidirectional Mapping
+To make the relationship b/w User and Profile entity bidirection, go to Profile entity class and create User entity reference variable in it and also use the attribute, mappedBy as shown below.
+
+@OneToOne(mappedBy = "company")
+	private User user;
+
+Generate getters and setters for this.
+public void setUser(User user) {
+		this.user = user;
+	}
+public User getUser() {
+		return this.user;
+	}
+
+Here the data
 
 *****************
+What Spring Data JPA does
+
+The CRUD methods defined in CrudRepository (save, delete, deleteAll, etc.) are indeed annotated with @Transactional in the implementation (SimpleJpaRepository).
+
+Writes (save, delete) → @Transactional with readOnly = false.
+Reads (findById, findAll) → @Transactional(readOnly = true) in some cases, but not always.
+
+🔹 Important distinction
+Not all repository methods are transactional by default.  
+Only the ones Spring Data JPA provides out-of-the-box in CrudRepository and JpaRepository have transactional annotations.
+
+If we define custom query methods (e.g., findByName(String name)), they are not automatically transactional unless we annotate them or configure transaction management at the service layer.
+
+🔹 Why this matters
+For write operations, Spring ensures atomicity by wrapping them in a transaction.
+
+For read operations, Spring often marks them as @Transactional(readOnly = true) to optimize performance (no dirty checks, fewer locks).
+
+For custom methods, we decide whether they need a transaction. If they involve LAZY loading or multiple queries, we usually add @Transactional at the service layer.
+---------------------------------------------------------------
 LAZY vs EAGER
 
 When we use FetchType.EAGER, Hibernate loads the associated entities immediately along with the parent entity. That means as soon as you fetch the parent, Hibernate issues a query with joins to bring in all related data. This ensures you won’t face LazyInitializationException later, but it can lead to over-fetching—loading data you don’t actually need. It also makes the initial query heavier and keeps the database connection busy until all associations are retrieved.
@@ -2979,3 +3154,68 @@ Shared Caching Works Like This:
 -> First DB hit → stores in second-level cache.
 -> If User B logs in and loads user with ID 1:
 -> No DB hit — served from cache!
+
+-----------------------------------------------------
+**************************************
+🔹 Dirty Checking
+Hibernate keeps track of all entities loaded in the persistence context (the session).
+
+Normally, at the end of a transaction, Hibernate performs dirty checking: it scans all managed entities to see if any fields were modified.
+
+If changes are found, Hibernate automatically issues UPDATE statements to synchronize the database.
+
+With readOnly = true, Hibernate skips dirty checking because it assumes you won’t modify entities.
+
+This saves CPU cycles and avoids unnecessary SQL generation.
+
+It’s an optimization for performance when you’re only reading data.
+
+🔹 Fewer Locks
+In databases, transactions can acquire locks to ensure consistency.
+
+For write transactions, locks are often stronger (like exclusive locks) to prevent other transactions from modifying the same rows.
+
+For read-only transactions, Spring and Hibernate can hint to the database that no modifications will occur.
+
+This allows the database to use lighter locks (like shared or no locks, depending on isolation level).
+
+Result: less contention, better concurrency, and faster reads.
+
+🔹 Putting it together
+So when we see:
+@Transactional(readOnly = true)
+public User findById(Long id) { ... }
+It means:
+
+Hibernate won’t waste time scanning entities for changes (no dirty checking).
+
+The database won’t hold heavy locks, improving performance and scalability.
+
+We still get transactional guarantees for consistency, but optimized for reads.
+
+------------------------------------------------------------------------------------
+A lock in databases is a mechanism used to control concurrent access to data so that multiple transactions don’t corrupt or overwrite each other’s changes. Think of it as a “reserved sign” placed on a row, table, or resource while one transaction is working with it.
+
+🔹 Types of Locks
+Shared lock (read lock)
+
+Multiple transactions can read the same data at the same time.
+But no one can modify it until the shared lock is released.
+Example: If we run SELECT in a transaction, the database may place a shared lock on those rows.
+
+Exclusive lock (write lock)
+
+Only one transaction can hold it.
+Prevents others from reading or writing the locked data until it’s released.
+Example: If you run UPDATE or DELETE, the database places an exclusive lock.
+
+🔹 Why locks matter
+They ensure consistency: no two transactions can update the same row at the same time.
+They prevent dirty reads (reading uncommitted changes).
+But they also introduce contention: if too many locks are held, other transactions must wait.
+
+🔹 Connection to @Transactional(readOnly = true)
+In read-only transactions, Hibernate tells the database “I won’t modify anything.”
+The database can then use lighter locks (or sometimes no locks at all, depending on isolation level).
+This reduces contention and improves performance, especially under heavy load.
+**************************************
