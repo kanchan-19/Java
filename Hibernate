@@ -2367,7 +2367,7 @@ Now, change the FetchType to LAZY in User Entity. Replace @OneToOne(cascade = Ca
 	• One to One Bidirectional Mapping
 To make the relationship b/w User and Profile entity bidirection, go to Profile entity class and create User entity reference variable in it and also use the attribute, mappedBy as shown below.
 
-@OneToOne(mappedBy = "company")
+@OneToOne(fetch = FetchType.LAZY, mappedBy = "company")
 	private User user;
 
 Generate getters and setters for this.
@@ -2378,8 +2378,69 @@ public User getUser() {
 		return this.user;
 	}
 
-Here the data
+Write the below test method in HibernateMappingApplicationTests.java
+@Test
+	void getProfile() {
+		Profile prf = profileRepository.findById(1L).get();// transaction/session open
+		User user = prf.getUser();// proxy accessed while session still open
+		
+		System.out.println(prf.getDescription());// already loaded
+		System.out.println(user.getName());// Hibernate issues query, resolves proxy
+		// session closes after repository method scope ends
+	}
 
+🔹 Why the session doesn’t close immediately after findById
+When we call profileRepository.findById(1L), Spring opens a transaction and a persistence context (EntityManager → Hibernate Session) for that repository method.
+
+That transaction remains active until the repository method finishes. But here’s the catch: if we immediately access a lazy proxy (prf.getUser()), Hibernate sees that we’re still inside the same persistence context and issues the extra SQL query before closing the session.
+
+In other words, the session is not closed at the exact moment the first query finishes — it stays open until the repository method returns control. If we touch the proxy before the method completes, Hibernate can still fetch the data.
+
+The two cases i.e. test methods, getUserDetails(), getProfile() look similar on the surface, but the difference comes down to who owns the relationship and how Hibernate handles the proxy initialization based on the mapping.
+
+🔹 Why this matters
+When you load a Profile, Hibernate already knows the foreign key (profile_id) from the User table. That allows it to create a proxy for User with the identifier set. If you access prf.getUser() immediately, Hibernate can resolve it while the session is still open.
+
+When you load a User, the Profile is the target of the foreign key. Hibernate only knows the ID of the Profile but doesn’t initialize it. Accessing user.getProfile() later requires firing a query. If the session is closed (because the repository call ended), you’ll hit LazyInitializationException.
+
+🔹 The role of @JoinColumn
+The difference in behavior is directly tied to the @JoinColumn placement:
+
+Owning side (User with profile_id) → Hibernate controls the foreign key and defers loading the target entity. Needs session open when accessed.
+
+Inverse side (Profile with mappedBy) → Hibernate already has the foreign key from the owning side, so it can resolve the proxy more readily inside the repository transaction.
+
+✅ So the takeaway is:  
+Both are LAZY, but the timing of proxy resolution depends on which side owns the relationship. That’s why in one case you didn’t need @Transactional, and in the other you did — the @JoinColumn placement changes when Hibernate can safely resolve the proxy.
+
+🔹 “Hibernate controls the foreign key and defers loading the target entity”
+Controls the foreign key:
+In our User entity, we have:
+
+@OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+@JoinColumn(name = "profile_id")
+private Profile profile;
+This means the User table has a column profile_id. Hibernate manages that column — it knows which Profile row is linked to the User.
+
+Defers loading the target entity:
+When we fetch a User, Hibernate doesn’t immediately load the Profile row (because we marked it LAZY). Instead, it creates a proxy object for Profile that contains only the ID (profile_id).
+
+At this stage, Hibernate knows which row to fetch later, but it hasn’t executed the SQL yet.
+The actual SELECT for Profile is deferred until we call something like user.getProfile().getDescription().
+That deferred query requires the session to still be open.
+
+LAZY is not guaranteed for @OneToOne. By default, JPA says @OneToOne is EAGER, and even if you set LAZY, Hibernate may still fetch eagerly unless you configure bytecode enhancement or specific Hibernate annotations.
+
+👉 If we want true guaranteed lazy loading for one-to-one, we usually need:
+
+Hibernate bytecode enhancement (hibernate-enhance-maven-plugin or Gradle equivalent), or
+
+Hibernate-specific annotation:
+
+java
+@LazyToOne(LazyToOneOption.NO_PROXY)
+@OneToOne(fetch = FetchType.LAZY)
+private Profile profile;
 *****************
 What Spring Data JPA does
 
@@ -2917,7 +2978,16 @@ Note:
 | `@Query`          | Allows writing custom JPQL or native SQL queries inside repository methods.                                              |
 | `@Transactional`  | Manages the database transaction for the method or class. Automatically commits on success and rolls back on exceptions. |
 
+**********************************
+	• Many to Many Unidirectional Mapping
+One Bus going to five stops and one stop might have several buses
+Step 1: Create two entity class, Bus and Stop.
 
+Step 2: Create two interfaces, BusRepository and StopRepository and both should extend JpaRepository.
+
+Step 3: Create below methods in HibernateMapppingApplicationTests.java
+
+**********************************
 
 ###########################
 ManyToManyMapping
