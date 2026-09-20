@@ -2979,13 +2979,189 @@ Note:
 | `@Transactional`  | Manages the database transaction for the method or class. Automatically commits on success and rolls back on exceptions. |
 
 **********************************
-	• Many to Many Unidirectional Mapping
+	• Many to Many Bidirectional Mapping
 One Bus going to five stops and one stop might have several buses
 Step 1: Create two entity class, Bus and Stop.
+Bus.java
+package com.example.hibernate.entity;
+
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Table;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+
+@Entity	
+@Table(name = "buses")
+public class Bus {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	private String name;
+	
+	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@JoinTable(
+			name = "bus_stops",
+			joinColumns = @JoinColumn(name = "bus_id"),
+			inverseJoinColumns = @JoinColumn(name = "stop_id")
+			)
+	private Set<Stop> stops;
+	
+	// setters
+	public void setName(String name) {
+		this.name = name;
+	}
+	public void setStop(Set<Stop> stops) {
+		this.stops = stops;
+	}
+	
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	public String getName() {
+		return this.name;
+	}
+	public Set<Stop> getStops(){
+		return this.stops;
+	}
+
+}
+
+Stop.java
+package com.example.hibernate.entity;
+
+import java.util.Set;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Table;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+
+@Entity
+@Table(name = "stops")
+public class Stop {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
+	private String name;
+	
+	@ManyToMany(mappedBy = "stops", fetch = FetchType.LAZY)
+	private Set<Bus> buses;
+	
+	// setters
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	public void setBus(Set<Bus> buses) {
+		this.buses = buses;
+	}
+	
+	// getters
+	
+	public long getId() {
+		return this.id;
+	}
+	public String getName() {
+		return this.name;
+	}
+	public Set<Bus> getBus(){
+		return this.buses;
+	}
+}
 
 Step 2: Create two interfaces, BusRepository and StopRepository and both should extend JpaRepository.
+BusRepository.java
+package com.example.hibernate.repository;
 
-Step 3: Create below methods in HibernateMapppingApplicationTests.java
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.Bus;
+
+public interface BusRepository extends JpaRepository<Bus, Long> {
+
+}
+
+StopRepository.java
+package com.example.hibernate.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.hibernate.entity.Stop;
+
+public interface StopRepository extends JpaRepository<Stop, Long>{
+
+}
+
+Step 3: Create below test methods in HibernateMapppingApplicationTests.java
+@Autowired
+	private BusRepository busRepository;
+	
+	@Autowired
+	private StopRepository stoprepository;
+	
+	@Test
+	void saveBusesAndStops() {
+		Stop s1 = new Stop();
+		s1.setName("BTM");
+		
+		Stop s2 = new Stop();
+		s2.setName("HSR");
+		
+		Bus b1 = new Bus();
+		b1.setName("A");
+		b1.setStop(Set.of(s1, s2));
+		
+		Bus b2 = new Bus();
+		b2.setName("B");
+		b2.setStop(Set.of(s1, s2));
+		
+		busRepository.saveAll(List.of(b1, b2));
+	}
+	
+	@Test
+	void getBusById() {
+		Bus bus = busRepository.findById(1L).get();
+		Set<Stop> stops = bus.getStops();
+		
+		System.out.println(bus.getName());
+		
+		for(Stop s: stops) {
+			System.out.print(s.getId() + " ");
+			System.out.println(s.getName());
+		}
+	}
+
+We can see that we are getting only bus name not stops name. This happens because stops is fetched lazily. After the repository call, the Hibernate session is closed, so the proxy cannot be initialized (A proxy object is already created by Hibernate at the time the parent entity (Bus) is loaded. Hibernate knows the foreign key and can wrap it in a proxy instance. What fails is the initialization of that proxy — meaning Hibernate cannot fetch the actual data from the database because the session is closed. So, technically, the object exists, but it remains an uninitialized proxy. When we try to access its fields (stop.getName()), Hibernate attempts to initialize it. If the session is closed, that initialization fails.). 
+Adding @Transactional resolves the issue as it keeps the session open for the entire method, allowing Hibernate to fetch the Stop entities when accessed.
+
+@Test
+@Transactional
+	void getBusById() {
+		Bus bus = busRepository.findById(1L).get();
+		Set<Stop> stops = bus.getStops();
+		
+		System.out.println(bus.getName());
+		
+		for(Stop s: stops) {
+			System.out.print(s.getId() + " ");
+			System.out.println(s.getName());
+		}
+	}
 
 **********************************
 
@@ -3183,6 +3359,17 @@ Note: Default Fetch Type
 @ManyToOne(fetch = FetchType.EAGER)
 @OneToMany(fetch = FetchType.LAZY)
 @ManyToMany(fetch = FetchType.LAZY)
+
+******************************
+Cache is special memory in our RAM that helps to retrieve data faster with some logic. Everytime we request data from DB or everytime a user interacts with DB and gets data from it, performance will be slow.
+Why the performance is slow?
+Suppose we are seraching for an order. We entered the order id and when we did it, it has to connect to DB, run the query, get the result, return the data to customer and close the DB connection which somewhere takes time. We can make this interaction a bit faster with the use of concept known as Hibernate Cache. 
+First-Level cache in hibernate comes as default cache. Suppose a user logs-in, for the first time when we send the request to DB to find order by order_id, first time it will connect to DB, get the data and that data will be stored in hibernate cache memory. This cache memory will be accessible only to the user who has logged-in. Other users can't access this data. It is per user session or per login. Second time, when the same user requests for data, it won't fetch data from DB. It will first refer cache memory, it sees that order detail is already present in cache memory. So, it will take the data from there which improves the application response time or performance.
+
+Second level cacheis like global cache. We want to keep some data in global cache so that all users can access it which will improve our application performance. e.g. We go to an e-commerce site and search for a record and this search feature is available for all users. There is no security issue with it. This is where global cache comes in picture. To get this global cache, there are caching solutions such as Redis cache, Caffeine, Ehcache etc. We can login to Redis server and can integrate our Hibernate code with it using just few annotations. Once we integrate, whichever hibernate query we want to put in Redis cache, first time it will run but after getting that data, it is stored in redis cache. Now, that becomes a global data. From then on if anybody access the same data, response for them will be faster becomes its avoiding communication with DB to fetch that data.
+
+*******************************
+
 #################
 Hibernate Cache 
 #################
