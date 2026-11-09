@@ -372,22 +372,19 @@ What is repository layer in spring boot?
 #######################################################
 What is Dependency Injection (DI) in Spring Boot?
 #######################################################
--> Dependency Injection is a design pattern used by Spring Boot to automatically create and manage objects (dependencies) your classes need — without you manually creating them.
+-> Dependency Injection is a design pattern used by Spring Boot to automatically create and manage objects (dependencies) our classes need — without us manually creating them.
 -> Dependency Injection is a technique where objects (dependencies) are injected into a class by the framework (Spring) at runtime
 
 Anology:
 ------------
-Imagine you're building a house. You don’t make the bricks yourself — you ask someone to provide them.
-Similarly, Spring Boot provides the objects your app needs.
+Imagine we're building a house. we don’t make the bricks ourself — we ask someone to provide them.
+Similarly, Spring Boot provides the objects our app needs.
 
 
 Why Use DI?
 a. Loose coupling between components
 b. Automatic lifecycle management (Spring manages the objects)
 
-Why Use DI?
-a. Loose coupling between components
-b. Automatic lifecycle management (Spring manages the objects)
 
 Example Of Tightly Coupled:
 ------------------------------
@@ -459,7 +456,7 @@ public class Main {
 What is Spring IOC?
 #########################
 -> Spring IOC Container is the core of the Spring Framework.
--> It manages the lifecycle and Creation of application objects (called beans).
+-> It manages the lifecycle and creation of application objects (called beans).
 -> It creates, configures, and wires objects automatically based on configuration
 -> Helps implement Dependency Injection (DI) easily.
 -> Promotes loose coupling because your classes don’t instantiate their dependencies directly.
